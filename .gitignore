@@ -16,3 +16,5 @@ liftkit/.pytest_cache/
 tooling/i960/build/
 tooling/i960/prefix/
 out/
+*.bin
+!disasm/**/*.bin
