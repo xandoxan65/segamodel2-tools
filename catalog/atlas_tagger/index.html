@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Atlas region tagger</title>
+    <link rel="stylesheet" href="/tagger.css" />
+  </head>
+  <body>
+    <div id="app">
+      <aside id="sidebar">
+        <h1>Atlas tagger</h1>
+        <p class="hint">
+          Drag a rectangle on the sheet to create an entry. Click a region to edit.
+          Shift+drag always creates a new box. Alt+drag pans; wheel zooms.
+        </p>
+        <label class="field">
+          <span>Texture bank</span>
+          <select id="sheet-select">
+            <option value="0">Sheet 0 — 0x02200000 (UI + misc)</option>
+            <option value="1">Sheet 1 — 0x02400000 (environment)</option>
+          </select>
+        </label>
+        <div class="row">
+          <label><input type="checkbox" id="snap32" checked /> Snap 32px</label>
+          <label><input type="checkbox" id="show-palette" /> Palette preview</label>
+          <label><input type="checkbox" id="palette-selected-only" checked /> Selected region only</label>
+        </div>
+        <div class="actions">
+          <button type="button" id="btn-apply">Apply</button>
+          <button type="button" id="btn-save">Save catalog</button>
+          <button type="button" class="danger" id="btn-delete">Delete</button>
+          <button type="button" class="secondary" id="btn-clear-draft">Clear draft</button>
+        </div>
+        <div class="actions audit-actions">
+          <button type="button" id="btn-audit-refresh" class="secondary">Refresh audit</button>
+          <button type="button" id="btn-audit-catalog">Apply audit to catalog</button>
+        </div>
+        <div id="audit-status" class="audit-status muted"></div>
+        <div id="status"></div>
+        <label class="field">
+          <span>ID</span>
+          <input id="field-id" type="text" placeholder="auto if empty" />
+        </label>
+        <label class="field">
+          <span>Label</span>
+          <input id="field-label" type="text" placeholder="e.g. Road surface desert" />
+        </label>
+        <div id="palette-badge" class="palette-badge" hidden></div>
+        <div class="row">
+          <label class="field" style="flex: 1; min-width: 70px">
+            <span>X</span>
+            <input id="field-x" type="number" step="32" />
+          </label>
+          <label class="field" style="flex: 1; min-width: 70px">
+            <span>Y</span>
+            <input id="field-y" type="number" step="32" />
+          </label>
+          <label class="field" style="flex: 1; min-width: 70px">
+            <span>W</span>
+            <input id="field-w" type="number" step="32" />
+          </label>
+          <label class="field" style="flex: 1; min-width: 70px">
+            <span>H</span>
+            <input id="field-h" type="number" step="32" />
+          </label>
+        </div>
+        <div class="row">
+          <label class="field" style="flex: 1">
+            <span>Colorbase</span>
+            <input id="field-cb" type="number" placeholder="optional" />
+          </label>
+          <label class="field" style="flex: 1">
+            <span>Lumabase</span>
+            <input id="field-lb" type="number" placeholder="optional" />
+          </label>
+        </div>
+        <div id="audit-panel" class="audit-panel" hidden>
+          <div id="audit-panel-text" class="audit-panel-text"></div>
+          <label class="field" id="audit-binding-wrap" hidden>
+            <span>Binding</span>
+            <select id="audit-binding-select"></select>
+          </label>
+          <button type="button" id="btn-apply-audit" class="secondary">Apply audit palette</button>
+        </div>
+        <label class="field">
+          <span>Source</span>
+          <select id="field-source">
+            <option value="manual">manual</option>
+            <option value="geometry">geometry</option>
+          </select>
+        </label>
+        <div class="row">
+          <label><input type="checkbox" id="field-cutout" /> Cutout</label>
+          <label><input type="checkbox" id="field-checker" /> Checker</label>
+        </div>
+        <label class="field">
+          <span>Notes</span>
+          <textarea id="field-notes" placeholder="Optional notes"></textarea>
+        </label>
+        <h2 style="font-size: 13px; margin: 14px 0 6px">Regions on this sheet</h2>
+        <ul id="region-list"></ul>
+      </aside>
+      <main id="viewport">
+        <div id="canvas-wrap">
+          <canvas id="atlas-canvas"></canvas>
+        </div>
+        <div id="hud"></div>
+      </main>
+    </div>
+    <script src="/tagger.js"></script>
+  </body>
+</html>

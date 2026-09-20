@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sega Rally — Asset Viewer</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <aside id="sidebar">
+        <h1>Sega Rally Assets</h1>
+        <p class="hint">Track data comes from the <strong>placement stream</strong> (draw script @ 0x28656C0), not ROM bank dumps. Start with the four <strong>course</strong> entries (Desert / Forest / Mountain / Championship) — one export per menu track.</p>
+        <p class="hint">Course tracks include <strong>face data</strong> (wireframe/solid) and <strong>palette-tinted UV textures</strong> — pick <strong>Textured</strong> for Desert / Forest / Mountain / Championship (55 palette variants on desert).</p>
+        <p class="hint">Body shells <strong>96–99 and 106–107</strong> share one identical mesh in ROM.</p>
+        <p class="hint"><code>python3 -m tools.extract.asset_index && python3 -m tools.extract.manifest</code></p>
+        <section>
+          <h2>Layers</h2>
+          <label><input type="checkbox" id="layer-grid" checked /> Grid (XZ ground)</label>
+          <label><input type="checkbox" id="layer-axes" checked /> Axes (X red · Y green · Z blue)</label>
+          <label><input type="checkbox" id="layer-mesh" checked /> Geometry</label>
+          <label><input type="checkbox" id="layer-heightmap" /> Height map</label>
+        </section>
+        <section>
+          <h2>Point maps</h2>
+          <label class="field-label">Category
+            <select id="category-select"></select>
+          </label>
+          <label class="field-label">Asset
+            <select id="mesh-select"></select>
+          </label>
+          <p id="category-desc" class="hint"></p>
+          <dl id="asset-detail" class="asset-detail"></dl>
+          <label class="field-label">Display
+            <select id="display-mode">
+              <option value="points" selected>Points</option>
+              <option value="wireframe">Wireframe (needs face data)</option>
+              <option value="solid">Solid mesh (needs face data)</option>
+              <option value="uv-atlas">UV atlas (phase 2a — mapping only)</option>
+              <option value="textured">Textured (phase 2b — per-material palette)</option>
+            </select>
+          </label>
+          <p id="mesh-info" class="hint"></p>
+          <label class="range-label">Y min <input type="range" id="y-min" /></label>
+          <label class="range-label">Y max <input type="range" id="y-max" /></label>
+          <label class="range-label">Z min <input type="range" id="z-min" /></label>
+          <label class="range-label">Z max <input type="range" id="z-max" /></label>
+          <p id="clip-range-info" class="hint"></p>
+        </section>
+        <section>
+          <h2>Height map</h2>
+          <select id="heightmap-select"></select>
+        </section>
+        <section>
+          <h2>Texture sheets</h2>
+          <select id="texture-select"></select>
+          <div id="texture-preview"></div>
+        </section>
+        <section>
+          <h2>Labels</h2>
+          <ul id="label-list"></ul>
+        </section>
+      </aside>
+      <main id="viewport"></main>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

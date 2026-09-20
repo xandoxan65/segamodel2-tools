@@ -1,0 +1,121 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #111;
+  color: #eee;
+}
+
+#app {
+  display: flex;
+}
+
+#sidebar {
+  width: 320px;
+  padding: 1rem;
+  overflow-y: auto;
+  background: #1a1a1a;
+  border-right: 1px solid #333;
+}
+
+#sidebar h1 {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+
+#sidebar h2 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #aaa;
+  margin: 1rem 0 0.5rem;
+}
+
+#sidebar section label {
+  display: block;
+  margin: 0.25rem 0;
+}
+
+.range-label input[type="range"] {
+  width: 100%;
+  margin: 0.25rem 0 0.5rem;
+}
+
+#sidebar select {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.field-label {
+  display: block;
+  font-size: 0.8rem;
+  color: #aaa;
+  margin-bottom: 0.5rem;
+}
+
+.tag {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #666;
+  font-weight: normal;
+}
+
+section.deferred {
+  opacity: 0.65;
+}
+
+.asset-detail {
+  font-size: 0.78rem;
+  margin: 0.5rem 0;
+  color: #bbb;
+}
+
+.asset-detail dt {
+  color: #888;
+  margin-top: 0.35rem;
+}
+
+.asset-detail dd {
+  margin: 0.1rem 0 0 0;
+}
+
+#mesh-info {
+  white-space: pre-line;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.hint code {
+  color: #ccc;
+}
+
+#texture-preview img {
+  width: 100%;
+  image-rendering: pixelated;
+  border: 1px solid #444;
+  margin-top: 0.5rem;
+}
+
+#label-list {
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 0.75rem;
+  padding-left: 1.2rem;
+  margin: 0;
+  color: #bbb;
+}
+
+#viewport {
+  flex: 1;
+  min-width: 0;
+}

@@ -1,0 +1,252 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font: 14px/1.4 system-ui, sans-serif;
+  background: #141414;
+  color: #e8e8e8;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#app {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  height: 100vh;
+}
+
+#sidebar {
+  border-right: 1px solid #333;
+  padding: 12px 14px;
+  overflow-y: auto;
+  background: #1c1c1c;
+}
+
+#sidebar h1 {
+  font-size: 16px;
+  margin: 0 0 8px;
+}
+
+.hint {
+  font-size: 12px;
+  color: #999;
+  margin: 0 0 10px;
+}
+
+.field {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.field span {
+  display: block;
+  font-size: 11px;
+  color: #aaa;
+  margin-bottom: 4px;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  background: #111;
+  border: 1px solid #444;
+  color: #eee;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font: inherit;
+}
+
+.field textarea {
+  min-height: 56px;
+  resize: vertical;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.row label {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+button {
+  background: #2d5a8e;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 7px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #333;
+}
+
+button.danger {
+  background: #7a2d2d;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+#status {
+  font-size: 12px;
+  color: #8c8;
+  min-height: 18px;
+}
+
+#region-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  max-height: 280px;
+  overflow-y: auto;
+  border-top: 1px solid #333;
+}
+
+#region-list li {
+  padding: 6px 4px;
+  border-bottom: 1px solid #2a2a2a;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+#region-list li.active {
+  background: #2a3f55;
+}
+
+#region-list .meta {
+  color: #888;
+  font-size: 11px;
+}
+
+#region-list .meta.pal {
+  color: #9cf;
+  font-family: ui-monospace, monospace;
+}
+
+#region-list .meta.pal.muted {
+  color: #666;
+}
+
+.palette-badge {
+  font: 12px ui-monospace, monospace;
+  padding: 6px 8px;
+  border-radius: 4px;
+  margin: -4px 0 10px;
+}
+
+.palette-badge.has-pal {
+  background: #1a2a3a;
+  color: #9cf;
+  border: 1px solid #345;
+}
+
+.palette-badge.no-pal {
+  background: #222;
+  color: #777;
+  border: 1px solid #333;
+}
+
+.audit-actions {
+  margin-top: 0;
+}
+
+.audit-status {
+  font-size: 11px;
+  min-height: 16px;
+  margin: 4px 0 10px;
+  color: #888;
+}
+
+.audit-status.ok {
+  color: #8c8;
+}
+
+.audit-status.err {
+  color: #c88;
+}
+
+.audit-panel {
+  background: #1a2838;
+  border: 1px solid #345;
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin: -4px 0 10px;
+  font-size: 12px;
+}
+
+.audit-panel-text {
+  color: #9cf;
+  font-family: ui-monospace, monospace;
+  margin-bottom: 8px;
+  line-height: 1.45;
+}
+
+.audit-panel-text.muted {
+  color: #888;
+}
+
+.audit-panel .field {
+  margin-bottom: 8px;
+}
+
+.audit-panel button {
+  width: 100%;
+}
+
+#region-list .meta.audit {
+  color: #7ad;
+}
+
+#viewport {
+  position: relative;
+  overflow: hidden;
+  background: #0d0d0d;
+  cursor: crosshair;
+}
+
+#viewport.panning {
+  cursor: grab;
+}
+
+#canvas-wrap {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+}
+
+#atlas-canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+#hud {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  background: rgba(0, 0, 0, 0.72);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  pointer-events: none;
+}
