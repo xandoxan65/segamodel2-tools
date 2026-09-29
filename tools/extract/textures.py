@@ -4,13 +4,13 @@ Texel packing follows MAME model2rd.ipp get_texel(): sheets are logically 2048x1
 but stored in RAM as 1024x2048 with a fold at x >= 1024.
 
 Important: MAME uses the ``textures`` ROM region as a u16 pool for per-polygon texture
-points and headers. Runtime texel fetches read ``textureram0`` / ``textureram1`` (2 MiB
-each, Model 2A @ 0x12000000 / 0x12400000), which the game uploads before draw.
+points and headers. Runtime texel fetches read ``textureram0`` / ``textureram1`` (1 MiB
+of texels each, Model 2A @ 0x12000000 / 0x12400000), which the game uploads before draw.
 
-Static texel sheets live in ``main_data`` @ ``0x02200000`` / ``0x02400000`` (2 MiB each).
-Boot copies them into textureram via maincpu ``0x003940`` (see ``TEXTURE_SHEET_BANK*_VADDR``
-in ``tools/i960_memory.py``). Decoding ``mpr-17752``/``mpr-17753`` as atlases is wrong —
-that ROM holds tp/th metadata only.
+The texels live in 1 MiB banks of ``main_data`` from ``0x02200000``. The game does not
+copy a bank flat: maincpu ``0x003940`` deals each bank's mip levels out between the two
+sheets. ``tools.extract.texture_ram`` ports that routine. Decoding ``mpr-17752``/``mpr-17753``
+as atlases is wrong — that ROM holds tp/th metadata only.
 """
 
 from __future__ import annotations
@@ -21,8 +21,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from tools.i960_memory import TEXTURE_SHEET_BANK0_VADDR, TEXTURE_SHEET_BANK1_VADDR, TEXTURERAM_BANK_SIZE
 from tools.model2_palette import PaletteState, load_palette_from_main_data
+from tools.extract.texture_ram import build_texture_ram, load_texture_sheets, sheet_words
 from tools.model2_texture import TRANSPARENT_TEXEL
 from tools.rom_io import SRALLY_DATA_ROMS, load32_word_region, resolve_rom_dir, write_bytes
 
@@ -113,28 +113,12 @@ def decode_colored_logical_sheet(
     return rgba
 
 
-TEXTURERAM_BANK_BYTES = TEXTURERAM_BANK_SIZE
-
-
-def words_from_bytes(data: bytes) -> list[int]:
-    if len(data) % 4:
-        raise ValueError("Texture bank size must be a multiple of 4 bytes")
-    return list(struct.unpack(f"<{len(data) // 4}I", data))
-
-
-def load_sheet_banks_from_main_data(main_data: bytes) -> tuple[list[int], list[int]]:
-    """Return static 2 MiB texel banks from main_data (RE-backed upload source)."""
-    banks: list[list[int]] = []
-    for vaddr in (TEXTURE_SHEET_BANK0_VADDR, TEXTURE_SHEET_BANK1_VADDR):
-        offset = vaddr - 0x0200_0000
-        chunk = main_data[offset : offset + TEXTURERAM_BANK_BYTES]
-        if len(chunk) < TEXTURERAM_BANK_BYTES:
-            raise ValueError(
-                f"main_data too small for texture bank @ {vaddr:#x}: "
-                f"need {TEXTURERAM_BANK_BYTES} bytes, got {len(chunk)}"
-            )
-        banks.append(words_from_bytes(chunk))
-    return banks[0], banks[1]
+def load_sheet_banks_from_main_data(
+    main_data: bytes, maincpu: bytes | None = None, course: str | int | None = "desert"
+) -> tuple[list[int], list[int]]:
+    """Both texture RAM sheets (1 MiB each) as the upload routine leaves them."""
+    sheet0, sheet1 = build_texture_ram(main_data, maincpu, course)
+    return sheet_words(sheet0), sheet_words(sheet1)
 
 
 def write_sheet_pngs(
@@ -163,7 +147,8 @@ def write_sheet_pngs(
 
 def decode_stored_sheet(sheet: list[int], width: int = 1024, height: int = 2048) -> np.ndarray:
     """Raw storage layout: 1024x2048 without logical remapping."""
-    if len(sheet) < (width // 2) * (height // 2):
+    # One offset per 2x2 texels, two offsets (u16 lanes) to a u32 word.
+    if len(sheet) * 2 < (width // 2) * (height // 2):
         raise ValueError("Sheet too small for stored layout")
     img = np.zeros((height, width), dtype=np.uint8)
     for y2 in range(0, height, 2):
@@ -192,7 +177,7 @@ def extract_textures(rom_dir: Path, out_dir: Path) -> list[Path]:
     write_bytes(out_dir / "textures_deinterleaved.bin", raw)
 
     written: list[Path] = []
-    sheet_words = list(load_sheet_banks_from_main_data(main_data))
+    sheet_words = list(load_texture_sheets(rom_dir))
     for index, words in enumerate(sheet_words):
         written.extend(write_sheet_pngs(words, f"sheet{index}", out_dir, palette))
 

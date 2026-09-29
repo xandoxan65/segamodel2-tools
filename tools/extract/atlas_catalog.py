@@ -29,7 +29,7 @@ from tools.model2_catalog import parse_placement_stream
 from tools.model2_texture import parse_textured_placement, texture_u16_mask
 from tools.model2_texel_map import texel_map_id
 from tools.model2_palette import PaletteState, load_palette_from_main_data
-from tools.rom_io import SRALLY_DATA_ROMS, load32_word_region, resolve_rom_dir
+from tools.rom_io import SRALLY_DATA_ROMS, load32_word_region, load_maincpu, resolve_rom_dir
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CATALOG = REPO_ROOT / "catalog" / "atlas_regions.json"
@@ -307,7 +307,7 @@ def export_catalog(
 ) -> Path:
     catalog = load_catalog(catalog_path)
     main_data = load32_word_region(rom_dir, SRALLY_DATA_ROMS["main_data"])
-    sheets = load_sheet_banks_from_main_data(main_data)
+    sheets = load_sheet_banks_from_main_data(main_data, load_maincpu(rom_dir), course_id)
     palette = load_palette_from_main_data(main_data, course_id=course_id)
 
     out_dir.mkdir(parents=True, exist_ok=True)
