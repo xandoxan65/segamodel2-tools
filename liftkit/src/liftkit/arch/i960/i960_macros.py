@@ -11,19 +11,11 @@ from liftkit.arch.i960.disasm_parse import Insn, SliceDocument
 from liftkit.arch.i960.i960_ops import (
     ac_branch_cond,
     bbs_cond,
-    cmpibg_cond,
-    cmpibge_cond,
-    cmpibe_cond,
-    cmpible_cond,
-    cmpibl_cond,
-    cmpibne_cond,
-    cmpobge_cond,
-    cmpob_reg_cond,
-    cmpobne_cond,
+    cmp_branch_cond,
     insn_lower,
-    lower_movq_stmts,
+    lower_multi_mov_stmts,
 )
-from liftkit.arch.i960.i960_regs import is_i960_reg, reg_assign
+from liftkit.arch.i960.i960_regs import reg_assign
 
 
 class FuncKind(str, Enum):
@@ -239,10 +231,10 @@ def apply_macros(doc: SliceDocument, profile: FunctionProfile | None = None) -> 
             idx += 1
             continue
 
-        if mn == "movq":
-            movq = lower_movq_stmts(insn.operands)
-            if movq:
-                for expr, stmt_meta in movq:
+        if mn in ("movl", "movt", "movq"):
+            moves = lower_multi_mov_stmts(mn, insn.operands)
+            if moves:
+                for expr, stmt_meta in moves:
                     out.append(
                         MacroStmt(
                             kind="assign",
@@ -322,32 +314,14 @@ def _lower_branch(
         if len(ops) < 3:
             return None
         imm, reg, target = ops[0], ops[1], ops[2]
-        if mn.startswith("cmpob") and is_i960_reg(imm) and is_i960_reg(reg):
-            cond = cmpob_reg_cond(mn, imm, reg)
+        if mn in ("bbs", "bbc"):
+            cond = bbs_cond(imm, reg)
+            if mn == "bbc":
+                cond = f"!({cond})"
+        else:
+            cond = cmp_branch_cond(mn, imm, reg)
             if cond is None:
                 return None
-        elif mn == "cmpibge":
-            cond = cmpibge_cond(imm, reg)
-        elif mn == "cmpibg":
-            cond = cmpibg_cond(imm, reg)
-        elif mn == "cmpibe":
-            cond = cmpibe_cond(imm, reg)
-        elif mn == "cmpible":
-            cond = cmpible_cond(imm, reg)
-        elif mn == "cmpibl":
-            cond = cmpibl_cond(imm, reg)
-        elif mn == "cmpibne":
-            cond = cmpibne_cond(imm, reg)
-        elif mn == "cmpobge":
-            cond = cmpobge_cond(imm, reg)
-        elif mn == "cmpobne":
-            cond = cmpobne_cond(imm, reg)
-        elif mn == "bbs":
-            cond = bbs_cond(imm, reg)
-        elif mn == "bbc":
-            cond = f"!({bbs_cond(imm, reg)})"
-        else:
-            return None
         return MacroStmt(
             kind="branch",
             text=f"if ({cond}) goto L_{int(target, 16):08x};",

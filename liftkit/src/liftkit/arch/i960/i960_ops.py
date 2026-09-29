@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 from typing import Any
 
 from liftkit.arch.i960.i960_mem_emit import (
@@ -23,46 +24,32 @@ from liftkit.arch.i960.i960_regs import (
     is_abi_arg,
     lda_to_reg,
     reg_assign,
-    signed_byte,
     u32_val,
-    unsigned_byte,
 )
 from liftkit.arch.i960.i960_rom_ref import maincpu_rom_ptr_expr, vaddr_ptr_expr
 from liftkit.arch.i960.memory_map import MAINCPU_SIZE
 
 
-def cmpibge_cond(imm: str, reg: str) -> str:
-    return f"(signed char){_imm(imm)} >= {signed_byte(reg)}"
+_COBR_REL = {"e": "==", "ne": "!=", "l": "<", "le": "<=", "g": ">", "ge": ">="}
 
 
-def cmpibg_cond(imm: str, reg: str) -> str:
-    return f"{signed_byte(imm)} > {signed_byte(reg)}"
+def cmp_branch_cond(mnemonic: str, src1: str, src2: str) -> str | None:
+    """cmpib*/cmpob* src1, src2: branch if src1 <cc> src2.
 
-
-def cmpibl_cond(imm: str, reg: str) -> str:
-    return f"(signed char){_imm(imm)} < {signed_byte(reg)}"
-
-
-def cmpibne_cond(imm: str, reg: str) -> str:
-    imm_v = _imm(imm)
-    if imm_v == "0":
-        return f"{unsigned_byte(reg)} != 0"
-    return f"{unsigned_byte(reg)} != {imm_v}"
-
-
-def cmpibe_cond(imm: str, reg: str) -> str:
-    imm_v = _imm(imm)
-    if imm_v == "0":
-        return f"{unsigned_byte(reg)} == 0"
-    return f"{unsigned_byte(reg)} == {imm_v}"
-
-
-def cmpible_cond(imm: str, reg: str) -> str:
-    return f"(signed char){_imm(imm)} <= {signed_byte(reg)}"
-
-
-def cmpobge_cond(imm: str, reg: str) -> str:
-    return f"(unsigned char){_imm(imm)} >= {unsigned_byte(reg)}"
+    The ``b`` is *branch*, not *byte*: both compare all 32 bits, signed (cmpib)
+    or unsigned (cmpob). src1 may be a literal 0..31.
+    """
+    mn = mnemonic.lower()
+    if mn.startswith("cmpib"):
+        cast = "(i32)(u32)"
+    elif mn.startswith("cmpob"):
+        cast = "(u32)"
+    else:
+        return None
+    rel = _COBR_REL.get(mn[5:])
+    if rel is None:
+        return None
+    return f"{cast}{_imm(src1)} {rel} {cast}{src2}"
 
 
 def cmpr_branch_cond(mnemonic: str, lhs: str, rhs: str) -> str | None:
@@ -82,30 +69,6 @@ def cmpr_branch_cond(mnemonic: str, lhs: str, rhs: str) -> str | None:
     if mnemonic == "ble":
         return f"{a} <= {b}"
     return None
-
-
-def cmpob_reg_cond(mnemonic: str, lhs: str, rhs: str) -> str | None:
-    """Fused cmpob* on two full registers (MAME cmp_u + bxx_s)."""
-    a = f"(u32){lhs}"
-    b = f"(u32){rhs}"
-    if mnemonic == "cmpobe":
-        return f"{a} == {b}"
-    if mnemonic == "cmpobge":
-        return f"{a} >= {b}"
-    if mnemonic == "cmpobl":
-        return f"{a} < {b}"
-    if mnemonic == "cmpobne":
-        return f"{a} != {b}"
-    if mnemonic == "cmpoble":
-        return f"{a} <= {b}"
-    return None
-
-
-def cmpobne_cond(imm: str, reg: str) -> str:
-    imm_v = _imm(imm)
-    if imm_v == "0":
-        return f"{unsigned_byte(reg)} != 0"
-    return f"{unsigned_byte(reg)} != {imm_v}"
 
 
 def is_movrl_double_high_word(imm: int) -> bool:
@@ -314,18 +277,23 @@ def _space_c_for_addr(addr: int) -> str:
 
 _PAIR_REG = re.compile(r"^([gr])(\d+)$", re.I)
 
+# Registers each multi-word suffix moves: l = long, t = triple, q = quad.
+_WORD_COUNT = {"l": 2, "t": 3, "q": 4}
 
-def _reg_pair(reg: str) -> tuple[str, str] | None:
+
+def _reg_group(reg: str, count: int) -> list[str] | None:
+    """The ``count`` consecutive registers a multi-word op names by its first.
+
+    A long starts on an even register; a triple or quad on a multiple of four.
+    """
     m = _PAIR_REG.match(reg.strip())
     if not m:
         return None
     idx = int(m.group(2))
-    if idx % 2 != 0:
+    if idx % (2 if count == 2 else 4) != 0:
         return None
     prefix = m.group(1).lower()
-    lo = f"{prefix}{idx}"
-    hi = f"{prefix}{idx + 1}"
-    return lo, hi
+    return [f"{prefix}{idx + k}" for k in range(count)]
 
 
 def _is_zero_imm(op: Operand) -> bool:
@@ -334,39 +302,94 @@ def _is_zero_imm(op: Operand) -> bool:
     return op.kind in ("imm", "label") and op.imm == 0
 
 
-def lower_movq_stmts(operands: list[str]) -> list[tuple[str, dict[str, Any]]]:
-    """Expand movq to two 32-bit register assignments (even/odd pair)."""
+def lower_multi_mov_stmts(mnemonic: str, operands: list[str]) -> list[tuple[str, dict[str, Any]]]:
+    """Expand movl/movt/movq to one 32-bit assignment per register."""
+    mn = mnemonic.lower()
+    count = _WORD_COUNT.get(mn[3:]) if mn.startswith("mov") else None
     ops = parse_operands(operands)
-    if len(ops) != 2:
+    if count is None or len(ops) != 2:
         return []
-    src, dst = ops[0], ops[1].raw
-    dst_pair = _reg_pair(dst)
-    if dst_pair is None:
+    dst = _reg_group(ops[1].raw, count)
+    if dst is None:
         return []
+    meta: dict[str, Any] = {"mnemonic": mn, "operands": operands, "multi_reg": dst}
 
-    dst_lo, dst_hi = dst_pair
-    meta: dict[str, Any] = {"mnemonic": "movq", "operands": operands, "movq_pair": True}
-
-    if _is_zero_imm(src):
+    imm = ops[0].imm if ops[0].kind in ("imm", "label") else None
+    if imm is None and ops[0].raw.isdigit():
+        imm = int(ops[0].raw)
+    if imm is not None:
+        # A literal lands in the first register; the rest are cleared.
         return [
-            (f"{dst_lo} = 0", meta),
-            (f"{dst_hi} = 0", meta),
+            (f"{reg} = 0x{(imm >> (32 * k)) & 0xFFFFFFFF:x}", meta)
+            for k, reg in enumerate(dst)
         ]
 
-    if src.kind in ("imm", "label") and src.imm is not None:
-        return [
-            (f"{dst_lo} = 0x{src.imm & 0xFFFFFFFF:x}", meta),
-            (f"{dst_hi} = 0x{(src.imm >> 32) & 0xFFFFFFFF:x}", meta),
-        ]
-
-    src_pair = _reg_pair(src.raw)
-    if src_pair is None:
+    src = _reg_group(ops[0].raw, count)
+    if src is None:
         return []
-    src_lo, src_hi = src_pair
-    return [
-        (f"{dst_lo} = {u32_val(src_lo)}", meta),
-        (f"{dst_hi} = {u32_val(src_hi)}", meta),
-    ]
+    return [(f"{d} = {u32_val(r)}", meta) for r, d in zip(src, dst)]
+
+
+def _word_offset(offset: int | str, k: int) -> int | str:
+    if k == 0:
+        return offset
+    if isinstance(offset, int):
+        return offset + 4 * k
+    return f"({offset}) + 0x{4 * k:x}"
+
+
+def lower_multi_mem(mn: str, ops: list[Operand]) -> tuple[str | None, dict[str, Any]]:
+    """ldl/ldt/ldq and stl/stt/stq as one 32-bit access per register.
+
+    Word k of the access is register k of the group, at the lowest address
+    first — so the even register of an ldl gets the word at the address.
+    """
+    load = mn.startswith("ld")
+    count = _WORD_COUNT[mn[2:]]
+    reg_op, mem = (ops[1], ops[0]) if load else (ops[0], ops[1])
+    regs = _reg_group(reg_op.raw, count)
+    if regs is None:
+        return None, {}
+    kind = "load" if load else "store"
+    meta: dict[str, Any] = {"multi_reg": regs}
+
+    abs_addr = _abs_addr(mem)
+    if abs_addr is not None or (mem.kind == "mem" and mem.mem_index and mem.mem_base is None):
+        if abs_addr is not None:
+            base, offset = abs_addr, 0
+        else:
+            off = mem.mem_offset or 0
+            base = off if off >= 0 else off + 0x1_0000_0000
+            offset = _index_scale_expr(mem.mem_index, mem.mem_scale or 1)
+        space_c = _space_c_for_addr(base)
+        meta["mem"] = {
+            "op": kind,
+            "space": space_for_abs_addr(base).value,
+            "width": "u32",
+            "base": f"0x{base:x}",
+            "offset": offset,
+        }
+        stmts = []
+        for k, reg in enumerate(regs):
+            off_c = _word_offset(offset, k)
+            if isinstance(off_c, int):
+                off_c = f"0x{off_c:x}"
+            if load:
+                stmts.append(f"{reg} = i960_ld_u32({space_c}, 0x{base:x}, {off_c})")
+            else:
+                stmts.append(f"i960_st_u32({space_c}, 0x{base:x}, {off_c}, (u32){reg})")
+        return "; ".join(stmts), meta
+
+    if mem.kind != "mem" or not (mem.mem_base or mem.mem_index):
+        return None, {}
+    access = _mem_access_from(mem, op_kind=kind, width="u32", value=regs[0] if not load else None)
+    meta.update(access.to_meta())
+    stmts = []
+    for k, reg in enumerate(regs):
+        word = replace(access, offset=_word_offset(access.offset, k), value=None if load else reg)
+        text = emit_load(reg, word) if load else emit_store(word)
+        stmts.append(text.rstrip(";"))
+    return "; ".join(stmts), meta
 
 
 def insn_c_expr(mnemonic: str, operands: list[str]) -> str | None:
@@ -388,8 +411,6 @@ def insn_lower(mnemonic: str, operands: list[str]) -> tuple[str | None, dict[str
         meta.update(fp_meta)
         return fp_expr, meta
 
-    if mn == "movl" and len(ops) == 2:
-        return f"{ops[1].raw} = {u32_val(ops[0].raw)}", meta
     if mn == "mov" and len(ops) == 2:
         return f"{ops[1].raw} = {u32_val(ops[0].raw)}", meta
     if mn in ("synmov", "synmovq") and len(ops) == 2:
@@ -456,57 +477,12 @@ def insn_lower(mnemonic: str, operands: list[str]) -> tuple[str | None, dict[str
             meta,
         )
 
-    if mn == "ldl" and len(ops) == 2:
-        abs_addr = _abs_addr(ops[0])
-        if abs_addr is not None:
-            space_c = _space_c_for_addr(abs_addr)
-            pair = _reg_pair(ops[1].raw)
-            meta["abs_addr"] = f"0x{abs_addr:x}"
-            meta["mem"] = {
-                "op": "load",
-                "space": space_for_abs_addr(abs_addr).value,
-                "width": "u64",
-                "base": f"0x{abs_addr:x}",
-                "offset": 0,
-            }
-            if pair is not None:
-                lo, hi = pair
-                return (
-                    f"{lo} = i960_ld_u32({space_c}, 0x{abs_addr:x}, 0); "
-                    f"{hi} = i960_ld_u32({space_c}, 0x{abs_addr:x}, 4)",
-                    meta,
-                )
-            return emit_abs_load(ops[1].raw, "u64", abs_addr), meta
-        if ops[0].mem_base:
-            access = _mem_access_from(ops[0], op_kind="load", width="u64")
-            meta.update(access.to_meta())
-            return emit_load(ops[1].raw, access), meta
-    if mn == "stl" and len(ops) == 2:
-        abs_addr = _abs_addr(ops[1])
-        if abs_addr is not None:
-            space_c = _space_c_for_addr(abs_addr)
-            pair = _reg_pair(ops[0].raw)
-            meta["abs_addr"] = f"0x{abs_addr:x}"
-            meta["mem"] = {
-                "op": "store",
-                "space": space_for_abs_addr(abs_addr).value,
-                "width": "u64",
-                "base": f"0x{abs_addr:x}",
-                "offset": 0,
-                "value": ops[0].raw,
-            }
-            if pair is not None:
-                lo, hi = pair
-                return (
-                    f"i960_st_u32({space_c}, 0x{abs_addr:x}, 0, (u32){lo}); "
-                    f"i960_st_u32({space_c}, 0x{abs_addr:x}, 4, (u32){hi})",
-                    meta,
-                )
-            return emit_abs_store("u64", abs_addr, ops[0].raw), meta
-        if ops[1].mem_base:
-            access = _mem_access_from(ops[1], op_kind="store", width="u64", value=ops[0].raw)
-            meta.update(access.to_meta())
-            return emit_store(access), meta
+    if mn in ("ldl", "ldt", "ldq", "stl", "stt", "stq"):
+        if len(ops) != 2:
+            return None, meta
+        expr, mem_meta = lower_multi_mem(mn, ops)
+        meta.update(mem_meta)
+        return expr, meta
 
     if mn == "lda" and len(ops) == 2:
         if ops[0].kind == "mem" and ops[1].raw == "sp" and ops[0].mem_base == "sp":
@@ -519,7 +495,6 @@ def insn_lower(mnemonic: str, operands: list[str]) -> tuple[str | None, dict[str
 
     load_map = {
         "ld": "u32",
-        "ldq": "u64",
         "ldob": "u8",
         "ldos": "u16",
     }
@@ -561,7 +536,6 @@ def insn_lower(mnemonic: str, operands: list[str]) -> tuple[str | None, dict[str
 
     store_map = {
         "st": "u32",
-        "stq": "u64",
         "stob": "u8",
         "stos": "u16",
     }

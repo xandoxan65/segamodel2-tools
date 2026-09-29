@@ -40,16 +40,6 @@ def reg_decl(name: str) -> str:
     return f"register {I960_REG_TYPE} {name};"
 
 
-def signed_byte(reg: str) -> str:
-    """Low signed byte of a general register (cmpibge semantics)."""
-    return f"(signed char){reg}"
-
-
-def unsigned_byte(reg: str) -> str:
-    """Low unsigned byte of a general register (cmpibne/cmpobne semantics)."""
-    return f"(unsigned char){reg}"
-
-
 def reg_assign(dst: str, expr: str) -> str:
     """Assign into a register or ABI argument."""
     return f"{dst} = {expr}"
