@@ -104,6 +104,24 @@ def load32_word_region(rom_dir: Path, pairs: Iterable[tuple[str, str]]) -> bytes
     return b"".join(chunks)
 
 
+# Program ROM pairs by revision (MAME srallycb, srallyc, srallycc), then the
+# older unsuffixed names some dumps of revision C carry.
+MAINCPU_PAIRS = [
+    ("epr-17888b.12", "epr-17889b.13"),
+    ("epr-17888c.12", "epr-17889c.13"),
+    ("epr-17888a.12", "epr-17889a.13"),
+    ("epr-17888.12", "epr-17889.13"),
+]
+
+
+def load_maincpu(rom_dir: Path) -> bytes:
+    """The i960 program ROM image, from whichever revision's pair is present."""
+    for low, high in MAINCPU_PAIRS:
+        if (rom_dir / low).is_file() and (rom_dir / high).is_file():
+            return load32_word_interleave(rom_dir, low, high)
+    raise FileNotFoundError(f"no program ROM pair in {rom_dir} (tried {', '.join(p[0] for p in MAINCPU_PAIRS)})")
+
+
 def load16_word_swap(rom_dir: Path, name: str) -> bytes:
     """MAME ROM_LOAD16_WORD_SWAP: 16-bit big-endian words in ROM -> little-endian bytes."""
     raw = load_raw(rom_dir, name)
