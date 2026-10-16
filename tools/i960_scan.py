@@ -137,7 +137,6 @@ def main() -> None:
         "exported_regions": regions,
         "next_steps": [
             "Disassemble geo_write_start clusters with: python -m tools.disasm.mame_dasm",
-            "Import maincpu_deinterleaved.bin in Ghidra (i960 LE, base 0x0) after tooling/setup_ghidra_i960.sh",
             "Xref 0x02864b40 / placement_group_026 in largest geo cluster",
         ],
     }

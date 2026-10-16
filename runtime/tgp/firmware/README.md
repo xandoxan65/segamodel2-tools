@@ -27,7 +27,7 @@ python3 -m tools.tgp.mb86233_dasm
 # → decomp/disasm/tgp/srally_tgp_program.asm
 ```
 
-ISA reference: MAME `mb86233d.cpp` (MB86233/34 family). Not Ghidra.
+ISA reference: MAME `mb86233d.cpp` (MB86233/34 family).
 
 ## FIFO dispatch
 

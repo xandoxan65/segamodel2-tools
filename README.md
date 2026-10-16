@@ -16,7 +16,7 @@ python3 -m tools.extract --rom-dir ROMS/srallyc-b --out out
 python3 -m liftkit --project . lift --function libc_memcpy
 ```
 
-`PYTHONPATH` must point at this repo root (the directory that contains the `tools` package, `liftkit/`, `viewer/`, and `tooling/`), not at the game root.
+`PYTHONPATH` must point at this repo root (the directory that contains the `tools` package, `liftkit/`, and `viewer/`), not at the game root.
 
 ## Layout
 
@@ -26,6 +26,5 @@ python3 -m liftkit --project . lift --function libc_memcpy
 | `liftkit/` | Disasm to IR to C scaffold |
 | `viewer/` | Web viewer for extracted assets |
 | `catalog/` | Atlas tagger |
-| `tooling/i960/` | i960 binutils container and spikes |
 
 ROM dumps and `out/` stay in the game tree. Do not commit them here.

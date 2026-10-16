@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export merged symbol anchors for Ghidra and decomp tooling."""
+"""Export merged symbol anchors for decomp tooling."""
 
 from __future__ import annotations
 
@@ -79,36 +79,20 @@ def build_anchors(functions: list[dict]) -> dict:
     }
 
 
-def write_ghidra_syms(labels: list[dict], path: Path) -> None:
-    lines = ["# srallyc maincpu — auto-generated", ""]
-    for row in labels:
-        addr = int(row["address"], 16)
-        if addr >= MAINCPU_LIMIT:
-            continue
-        lines.append(f"{row['name']} 0x{addr:08x} 0x0")
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-
-MAINCPU_LIMIT = 0x0010_0000
-
-
 def main() -> None:
     ap = argparse.ArgumentParser(description="Export decomp symbol anchors")
     ap.add_argument("--repo-root", type=Path, default=None)
     ap.add_argument("--functions", type=Path, default=None)
     ap.add_argument("--out-json", type=Path, default=None)
-    ap.add_argument("--out-ghidra", type=Path, default=None)
     args = ap.parse_args()
     root = (args.repo_root or decomp_root()).resolve()
     functions_path = args.functions or (root / "symbols/functions.yaml")
     out_json = args.out_json or (root / "symbols/anchors.json")
-    out_ghidra = args.out_ghidra or (root / "symbols/srallyc_maincpu.syms")
 
     functions = load_functions_yaml(functions_path)
     report = build_anchors(functions)
     out_json.parent.mkdir(parents=True, exist_ok=True)
     out_json.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    write_ghidra_syms(report["maincpu_labels"], out_ghidra)
     print(f"Wrote {out_json} ({len(report['maincpu_labels'])} labels)")
 
 

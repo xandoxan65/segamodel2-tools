@@ -7,7 +7,8 @@ import argparse
 import json
 from pathlib import Path
 
-from tools.decomp.reasm_slice import REPO_ROOT, count_mismatch_bytes, sha256
+from tools.decomp.rom_utils import count_mismatch_bytes, parse_rom_spec, sha256
+from tools.decomp.workspace import REPO_ROOT
 from tools.i960_scan import load_maincpu_words
 from tools.rom_io import resolve_rom_dir
 
@@ -59,8 +60,6 @@ def main() -> None:
     ap.add_argument("--rom-dir", type=Path, default=None)
     ap.add_argument("--report", type=Path, default=None)
     args = ap.parse_args()
-
-    from tools.decomp.c_reasm_slice import parse_rom_spec
 
     base, length = parse_rom_spec(args.rom)
     maincpu_raw, _ = load_maincpu_words(resolve_rom_dir(args.rom_dir))

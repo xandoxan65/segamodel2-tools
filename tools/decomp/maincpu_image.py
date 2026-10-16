@@ -138,7 +138,7 @@ def compile_region_blob(
     rom_dir: Path | None,
     require_match: bool,
 ) -> tuple[bytes | None, dict]:
-    """Lifted semantic C and container reasm are not ROM-stitched yet."""
+    """Lifted semantic C is not ROM-compiled; the reference image fills this span."""
     _ = (work_dir, rom_dir, require_match)
     return None, {
         "skipped": "reference_fill",

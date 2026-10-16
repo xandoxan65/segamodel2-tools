@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resolve functions.yaml names to tight maincpu disasm slices for Ghidra/reasm."""
+"""Resolve functions.yaml names to tight maincpu disasm slices for reasm."""
 
 from __future__ import annotations
 
