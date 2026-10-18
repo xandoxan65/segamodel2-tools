@@ -32,7 +32,7 @@ from tools.extract.texture_verify import _decode_patch_rgba
 from tools.extract.textures import decode_logical_sheet, load_sheet_banks_from_main_data
 from tools.i960_memory import TEXTURE_SHEET_BANK0_VADDR, TEXTURE_SHEET_BANK1_VADDR
 from tools.model2_palette import PaletteState, load_palette_from_main_data
-from tools.rom_io import SRALLY_DATA_ROMS, load32_word_region, resolve_rom_dir
+from tools.rom_io import SRALLY_DATA_ROMS, load32_word_region, load_maincpu, resolve_rom_dir
 
 TAGGER_DIR = REPO_ROOT / "catalog" / "atlas_tagger"
 PROBE_DIR = REPO_ROOT / "out" / "textures" / "main_data_probe"
@@ -51,7 +51,7 @@ def _load_sheets_and_palette(rom_dir: Path, course_id: str) -> tuple[tuple[list[
     if cached is not None:
         return cached
     main_data = load32_word_region(rom_dir, SRALLY_DATA_ROMS["main_data"])
-    sheets = load_sheet_banks_from_main_data(main_data)
+    sheets = load_sheet_banks_from_main_data(main_data, load_maincpu(rom_dir), course_id)
     palette = load_palette_from_main_data(main_data, course_id=course_id)
     cached = (sheets, palette)
     _SHEET_CACHE[key] = cached
